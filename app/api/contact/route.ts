@@ -48,15 +48,25 @@ ${message}
 ========================================
 `
 
-    // Guardar en archivo de texto
-    const messagesDir = path.join(process.cwd(), 'mensajes-contacto')
-    if (!fs.existsSync(messagesDir)) {
-      fs.mkdirSync(messagesDir, { recursive: true })
+    // Guardar en archivo de texto (solo en desarrollo local)
+    // En Vercel/producción el sistema de archivos es de solo lectura
+    let fileName = null
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    
+    if (isDevelopment) {
+      try {
+        const messagesDir = path.join(process.cwd(), 'mensajes-contacto')
+        if (!fs.existsSync(messagesDir)) {
+          fs.mkdirSync(messagesDir, { recursive: true })
+        }
+        fileName = `mensaje-${Date.now()}.txt`
+        const filePath = path.join(messagesDir, fileName)
+        fs.writeFileSync(filePath, messageContent, 'utf-8')
+      } catch (fileError: any) {
+        // Si falla el guardado de archivo, continuar de todas formas
+        console.warn('No se pudo guardar el archivo (esto es normal en producción):', fileError.message)
+      }
     }
-
-    const fileName = `mensaje-${Date.now()}.txt`
-    const filePath = path.join(messagesDir, fileName)
-    fs.writeFileSync(filePath, messageContent, 'utf-8')
 
     // ============================================================
     // CONFIGURACIÓN DE NODEMAILER - IMPORTANTE
@@ -148,7 +158,8 @@ ${message}
       { 
         success: true, 
         message: 'Mensaje enviado correctamente',
-        savedToFile: fileName
+        savedToFile: fileName || undefined,
+        environment: isDevelopment ? 'development' : 'production'
       },
       { status: 200 }
     )
